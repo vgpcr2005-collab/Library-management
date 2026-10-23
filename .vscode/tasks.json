@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start Smart Library with MySQL",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoExit",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"C:\\java deva project\\run-library-local.ps1"
+			],
+			"isBackground": true,
+			"group": "build"
+		}
+	]
+}

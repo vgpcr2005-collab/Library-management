@@ -1,0 +1,4 @@
+edu\alliance\library\EmbeddedDatabaseTest.class
+edu\alliance\library\InputValidatorTest.class
+edu\alliance\library\PasswordHasherTest.class
+edu\alliance\library\DomainModelTest.class

@@ -1,0 +1,6 @@
+    </main>
+    <footer class="footer"><span><%= java.time.Year.now().getValue() %> Alliance University</span><span>Smart Library Management System</span></footer>
+  </div>
+</div>
+</body>
+</html>
