@@ -2,9 +2,9 @@ package edu.alliance.library.servlet;
 
 import edu.alliance.library.dao.BookDao;
 import edu.alliance.library.dao.IssueDao;
+import edu.alliance.library.dao.LibraryOperatorDao;
 import edu.alliance.library.dao.StudentDao;
 import edu.alliance.library.model.Book;
-import edu.alliance.library.model.StaffAccount;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -18,6 +18,7 @@ public class IssueServlet extends HttpServlet {
     private final BookDao books = new BookDao();
     private final StudentDao students = new StudentDao();
     private final IssueDao issues = new IssueDao();
+    private final LibraryOperatorDao operator = new LibraryOperatorDao();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -41,8 +42,7 @@ public class IssueServlet extends HttpServlet {
         try {
             long bookId = Long.parseLong(request.getParameter("bookId"));
             long studentRecordId = Long.parseLong(request.getParameter("studentRecordId"));
-            StaffAccount staff = (StaffAccount) request.getSession().getAttribute("staff");
-            issues.issue(bookId, studentRecordId, staff.id());
+            issues.issue(bookId, studentRecordId, operator.operatorId());
             request.getSession().setAttribute("success", "Book issued. The due date was set from library settings.");
             response.sendRedirect(request.getContextPath() + "/app/issue");
         } catch (IllegalArgumentException e) {
@@ -54,4 +54,5 @@ public class IssueServlet extends HttpServlet {
             load(request, response);
         }
     }
+
 }

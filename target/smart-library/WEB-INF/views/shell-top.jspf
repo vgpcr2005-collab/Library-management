@@ -33,28 +33,13 @@
       <a href="${pageContext.request.contextPath}/app/concepts"><span aria-hidden="true">J</span> Java concepts</a>
       <a href="${pageContext.request.contextPath}/app/architecture"><span aria-hidden="true">A</span> Architecture</a>
     </nav>
-    <c:if test="${sessionScope.staff.admin}">
-      <div class="sidebar-label sidebar-label-spaced">ADMINISTRATION</div>
-      <nav class="side-nav" aria-label="Administration">
-        <a href="${pageContext.request.contextPath}/app/staff"><span aria-hidden="true">U</span> Staff accounts</a>
-      </nav>
-    </c:if>
-    <div class="sidebar-foot"><span class="status-dot"></span> Authorized staff <span>Secure</span></div>
+    <div class="sidebar-foot"><span class="status-dot"></span> Library demo <span>No account</span></div>
   </aside>
   <div class="main-area">
     <header class="topbar">
       <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" data-menu-toggle>|||</button>
       <div class="topbar-title"><span>ALLIANCE UNIVERSITY</span><small>SMART LIBRARY MANAGEMENT SYSTEM</small></div>
-      <div class="user-menu">
-        <a class="user-copy" href="${pageContext.request.contextPath}/app/account">
-          <strong><c:out value="${sessionScope.staff.fullName}"/></strong>
-          <small><c:out value="${sessionScope.staff.role}"/> account</small>
-        </a>
-        <form method="post" action="${pageContext.request.contextPath}/logout">
-          <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
-          <button class="button button-outline button-small" type="submit">Sign out</button>
-        </form>
-      </div>
+      <span class="topbar-mode">DEMO MODE</span>
     </header>
     <main class="page-content">
       <c:if test="${not empty success}"><div class="notice notice-success" role="status"><c:out value="${success}"/></div></c:if>

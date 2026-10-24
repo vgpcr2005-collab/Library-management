@@ -26,17 +26,6 @@ $env:LIBRARY_DB_URL = $null
 $env:LIBRARY_DB_USER = $null
 $env:LIBRARY_DB_PASSWORD = $null
 $env:APP_ENV = $null
-$env:LIBRARY_BOOTSTRAP_ADMIN_EMAIL = Read-Host "Initial administrator email (existing accounts will not be reset)"
-$secureAdminPassword = Read-Host "Administrator password (at least 14 characters; input is hidden)" -AsSecureString
-$env:LIBRARY_BOOTSTRAP_ADMIN_PASSWORD = [System.Net.NetworkCredential]::new("", $secureAdminPassword).Password
-$secureAdminPassword.Dispose()
-
-if ([string]::IsNullOrWhiteSpace($env:LIBRARY_BOOTSTRAP_ADMIN_EMAIL) -or
-    $env:LIBRARY_BOOTSTRAP_ADMIN_PASSWORD.Length -lt 14) {
-    $env:LIBRARY_BOOTSTRAP_ADMIN_EMAIL = $null
-    $env:LIBRARY_BOOTSTRAP_ADMIN_PASSWORD = $null
-    throw "An administrator email and a password of at least 14 characters are required."
-}
 
 try {
     $listener = Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue
@@ -57,9 +46,9 @@ try {
     }
 
     Copy-Item -Path $warFile -Destination $deployedWar -Force
-    Write-Host "Starting the local-only library with secure staff sign-in."
+    Write-Host "Starting the local-only library without sign-in."
     Write-Host "Database file: $HOME\.alliance-smart-library\library.mv.db"
-    Write-Host "Keep this PowerShell window open while using the library. Sign in with the administrator details entered above."
+    Write-Host "Keep this PowerShell window open while using the library."
     & $env:ComSpec /c "call `"$catalina`" run"
     if ($LASTEXITCODE -ne 0) {
         throw "Tomcat exited with code $LASTEXITCODE."
@@ -69,6 +58,4 @@ finally {
     $env:LIBRARY_DB_URL = $null
     $env:LIBRARY_DB_USER = $null
     $env:LIBRARY_DB_PASSWORD = $null
-    $env:LIBRARY_BOOTSTRAP_ADMIN_EMAIL = $null
-    $env:LIBRARY_BOOTSTRAP_ADMIN_PASSWORD = $null
 }

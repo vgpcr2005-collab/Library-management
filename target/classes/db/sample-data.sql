@@ -8,7 +8,7 @@ INSERT INTO books (isbn, title, author, category, total_copies, available_copies
 ('9780134494166', 'The Linux Programming Interface', 'Michael Kerrisk', 'Operating Systems', 4, 4, FALSE)
 ON DUPLICATE KEY UPDATE title = VALUES(title);
 
--- Local-only student fixture records; public account login and registration are disabled.
+-- Local-only student fixture records; students are library members, not application users.
 INSERT INTO users (email, password_hash, role, full_name, enabled) VALUES
 ('aarav.sharma@example.edu', NULL, 'STUDENT', 'Aarav Sharma', TRUE),
 ('diya.nair@example.edu', NULL, 'STUDENT', 'Diya Nair', TRUE)
@@ -24,4 +24,4 @@ SELECT id, 'AU-DEMO-1002', 'Business Administration', '+91 90000 10002'
 FROM users WHERE email = 'diya.nair@example.edu'
 ON DUPLICATE KEY UPDATE department = VALUES(department), phone = VALUES(phone);
 
--- Student records are library members only; this local app has no account login.
+-- Student records are library members only; they do not have application accounts.

@@ -165,6 +165,8 @@ public final class Database {
     }
 
     private static void seedLocalData(Connection connection) throws SQLException {
+        ensureUser(connection, "local-library@localhost", "ADMIN", "Local Library Operator");
+
         String[][] students = {
                 {"aarav.sharma@example.edu", "Aarav Sharma", "AU-DEMO-1001", "Computer Science", "+91 90000 10001"},
                 {"diya.nair@example.edu", "Diya Nair", "AU-DEMO-1002", "Business Administration", "+91 90000 10002"}

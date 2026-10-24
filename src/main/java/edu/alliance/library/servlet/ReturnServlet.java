@@ -1,7 +1,7 @@
 package edu.alliance.library.servlet;
 
 import edu.alliance.library.dao.IssueDao;
-import edu.alliance.library.model.StaffAccount;
+import edu.alliance.library.dao.LibraryOperatorDao;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -13,6 +13,7 @@ import java.sql.SQLException;
 @WebServlet("/app/return")
 public class ReturnServlet extends HttpServlet {
     private final IssueDao issues = new IssueDao();
+    private final LibraryOperatorDao operator = new LibraryOperatorDao();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -33,8 +34,7 @@ public class ReturnServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         try {
-            StaffAccount staff = (StaffAccount) request.getSession().getAttribute("staff");
-            var fine = issues.returnBook(Long.parseLong(request.getParameter("issueId")), staff.id());
+            var fine = issues.returnBook(Long.parseLong(request.getParameter("issueId")), operator.operatorId());
             request.getSession().setAttribute("success", "Return recorded. Fine calculated: " + fine.toPlainString());
             response.sendRedirect(request.getContextPath() + "/app/return");
         } catch (IllegalArgumentException e) {
@@ -46,4 +46,5 @@ public class ReturnServlet extends HttpServlet {
             load(request, response);
         }
     }
+
 }

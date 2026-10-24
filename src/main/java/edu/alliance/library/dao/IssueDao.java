@@ -18,7 +18,7 @@ import java.util.Map;
 public class IssueDao {
     private final SettingsDao settingsDao = new SettingsDao();
 
-    public void issue(long bookId, long studentRecordId, long staffUserId) throws SQLException {
+    public void issue(long bookId, long studentRecordId, long operatorUserId) throws SQLException {
         try (Connection c = Database.getConnection()) {
             c.setAutoCommit(false);
             try {
@@ -53,7 +53,7 @@ public class IssueDao {
                 try (PreparedStatement p = c.prepareStatement("INSERT INTO book_issues(book_id,student_id,issued_by,issue_date,due_date) VALUES(?,?,?,?,?)")) {
                     p.setLong(1, bookId);
                     p.setLong(2, studentRecordId);
-                    p.setLong(3, staffUserId);
+                    p.setLong(3, operatorUserId);
                     p.setDate(4, Date.valueOf(issued));
                     p.setDate(5, Date.valueOf(issued.plusDays(days)));
                     p.executeUpdate();
@@ -66,7 +66,7 @@ public class IssueDao {
         }
     }
 
-    public BigDecimal returnBook(long issueId, long staffUserId) throws SQLException {
+    public BigDecimal returnBook(long issueId, long operatorUserId) throws SQLException {
         try (Connection c = Database.getConnection()) {
             c.setAutoCommit(false);
             try {
@@ -97,7 +97,7 @@ public class IssueDao {
                 }
                 try (PreparedStatement p = c.prepareStatement("INSERT INTO book_returns(issue_id,returned_by,return_date,fine_amount) VALUES(?,?,?,?)")) {
                     p.setLong(1, issueId);
-                    p.setLong(2, staffUserId);
+                    p.setLong(2, operatorUserId);
                     p.setDate(3, Date.valueOf(LocalDate.now()));
                     p.setBigDecimal(4, fine);
                     p.executeUpdate();

@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS users (
 
 ALTER TABLE users MODIFY COLUMN password_hash VARCHAR(255) NULL;
 
+INSERT INTO users (email, password_hash, role, full_name, enabled)
+VALUES ('local-library@localhost', NULL, 'ADMIN', 'Local Library Operator', TRUE)
+ON DUPLICATE KEY UPDATE email = VALUES(email);
+
 CREATE TABLE IF NOT EXISTS students (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL UNIQUE,

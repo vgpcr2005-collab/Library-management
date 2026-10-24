@@ -7,15 +7,19 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 
-@WebServlet(urlPatterns = {"", "/register"})
-public class LocalHomeServlet extends HttpServlet {
+@WebServlet(urlPatterns = {"", "/login", "/register"})
+public class HomeServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        response.sendRedirect(request.getContextPath() + "/login");
+        openDashboard(request, response);
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        response.sendRedirect(request.getContextPath() + "/login");
+        openDashboard(request, response);
+    }
+
+    private void openDashboard(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        response.sendRedirect(request.getContextPath() + "/app/dashboard");
     }
 }

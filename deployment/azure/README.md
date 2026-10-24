@@ -1,4 +1,4 @@
-# Azure deployment: protected library website
+# Azure deployment: public library demo
 
 This deploys the existing Java website, not a native app. The target is Linux Azure App Service running the Maven WAR in Tomcat 10.1, with Azure Database for MySQL Flexible Server and Azure Key Vault references for secrets. The MySQL endpoint has public networking enabled only with a firewall allow-list for the setup IP and the App Service's possible outbound IPs. HTTPS is required at the website; database JDBC connections verify TLS.
 
@@ -17,7 +17,7 @@ The template creates an HTTPS-only App Service, a managed-identity-pull ACR, Azu
 
 ## 2. Build and publish the site image
 
-The GitHub Actions workflow in `.github/workflows/azure-deploy.yml` tests the project, builds the Tomcat container, pushes it to ACR, and updates App Service to the new image. Push the project to a private GitHub repository on `main`, then configure GitHub Actions:
+The root-level `Dockerfile` builds the Tomcat 10.1 container image. The GitHub Actions workflow in `.github/workflows/azure-deploy.yml` tests the project, builds that image, pushes it to ACR, and updates App Service. Push the project to a private GitHub repository on `main`, then configure GitHub Actions:
 
 **Repository secrets (OIDC identity values, not passwords):**
 
@@ -34,7 +34,7 @@ The GitHub Actions workflow in `.github/workflows/azure-deploy.yml` tests the pr
 
 Create a Microsoft Entra application/service principal with a GitHub Actions federated credential for this repository and branch. Grant its identity `AcrPush` on the registry and an appropriate Web App deployment role on the App Service. Do not use a publish profile or store database credentials in GitHub.
 
-The app may show an unavailable sign-in until the database and staff bootstrap steps below are finished; protected requests remain inaccessible.
+The deployed website is intentionally public and has no staff bootstrap or sign-in flow. All library records and operations are accessible to anyone who can reach the website; do not use real personal data.
 
 ## 3. Initialize MySQL and create the least-privilege app account
 
@@ -54,18 +54,14 @@ Use a new, unique password. Do not put it in source files or commit it. Add thes
 
 For password rotation, update both the MySQL account and Key Vault secret, then restart the Web App.
 
-## 4. Configure first administrator and start the protected site
+## 4. Configure the database connection and start the demo
 
 In App Service **Configuration → Application settings**, add:
 
 - `LIBRARY_DB_USER` = `@Microsoft.KeyVault(SecretUri=https://<key-vault-name>.vault.azure.net/secrets/library-db-user)`
 - `LIBRARY_DB_PASSWORD` = `@Microsoft.KeyVault(SecretUri=https://<key-vault-name>.vault.azure.net/secrets/library-db-password)`
-- `LIBRARY_BOOTSTRAP_ADMIN_EMAIL` = the first library administrator's email
-- `LIBRARY_BOOTSTRAP_ADMIN_PASSWORD` = a Key Vault reference to secret `library-bootstrap-admin-password`
 
-Create `library-bootstrap-admin-password` in Key Vault with a newly generated password of at least 14 characters. Do not reuse your Microsoft or MySQL administrator password. Save the App Service settings; the app uses the secret once to create a salted PBKDF2 administrator account. Check App Service logs for **Bootstrap administrator is ready** and sign in at the website URL.
-
-After the first administrator account is created, remove **both** `LIBRARY_BOOTSTRAP_ADMIN_EMAIL` and `LIBRARY_BOOTSTRAP_ADMIN_PASSWORD` from App Service settings, then restart the website. Removing these settings prevents bootstrap values from remaining in the runtime configuration. The stored administrator account is not removed. The primary administrator can create/disable librarian accounts and manage settings. Staff can change their passwords from **My account**.
+The `APP_ENV=production` setting and HTTPS-only website configuration are provided by the template. The root Docker image starts the dashboard as the default page. For an existing MySQL database, run the updated `src/main/resources/db/schema.sql` before using issue/return actions; it seeds the non-login system operator used for transaction attribution.
 
 Key Vault references resolve through the App Service's system-assigned identity. If the reference status is unresolved, check the Key Vault secret names, the `Key Vault Secrets User` role assignment, and the Web App's identity before retrying.
 
@@ -77,10 +73,8 @@ The generated App Service outbound IP list is included in MySQL firewall rules. 
 
 ## Security boundaries and limitations
 
-- `/`, protected library operations, and reports require a server-side staff session. The only unauthenticated paths are sign-in, static assets, and the legacy registration redirect; there is no student self-registration.
-- Admin and librarian roles are supported; Settings and Staff Accounts are administrator-only.
-- Passwords use salted PBKDF2-HMAC-SHA256; sessions rotate on login, expire after 20 minutes of inactivity, use HTTP-only/SameSite cookies, and become Secure behind HTTPS.
-- CSRF validation covers all POST forms, account state is rechecked on protected requests, and repeated sign-in attempts are throttled per web worker.
+- The entire website is public. Anyone can read, add, change, or delete library and student records, issue/return books, and change settings.
+- CSRF validation covers POST forms; it mitigates cross-site request forgery but does not prevent direct public access.
 - The application requires `APP_ENV=production` in Azure, rejects missing production database configuration, and never falls back to the local H2 file.
-- The included login throttle is in-memory and per worker. For a high-traffic production service, add an Azure WAF/rate-limit policy or a shared distributed limiter. Configure monitoring, alerting, backups, and a documented admin recovery process before institutional launch.
 - User-managed browser-to-App-Service traffic is HTTPS-only. MySQL uses a per-IP firewall allow-list and TLS certificate/hostname verification.
+- This configuration is for a development/demo deployment only. Do not use production student data or institutional workloads without restoring authentication and authorization.

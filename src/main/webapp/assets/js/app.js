@@ -2,17 +2,6 @@
   "use strict";
 
   document.addEventListener("DOMContentLoaded", () => {
-      document.querySelectorAll("[data-password-toggle]").forEach((toggle) => {
-          toggle.addEventListener("click", () => {
-              const input = document.getElementById(toggle.dataset.passwordToggle);
-              if (!input) return;
-              const visible = input.type === "password";
-              input.type = visible ? "text" : "password";
-              toggle.textContent = visible ? "Hide" : "Show";
-              toggle.setAttribute("aria-label", visible ? "Hide password" : "Show password");
-          });
-      });
-
     const menuToggle = document.querySelector("[data-menu-toggle]");
     const sidebar = document.querySelector("#sidebar");
     if (menuToggle && sidebar) {
