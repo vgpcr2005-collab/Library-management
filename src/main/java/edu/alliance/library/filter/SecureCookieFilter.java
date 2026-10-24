@@ -1,5 +1,6 @@
 package edu.alliance.library.filter;
 
+import edu.alliance.library.util.Database;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,7 +10,6 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletResponseWrapper;
-
 import java.io.IOException;
 
 public class SecureCookieFilter implements Filter {
@@ -19,7 +19,7 @@ public class SecureCookieFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         boolean secure = httpRequest.isSecure()
-                || ("production".equalsIgnoreCase(System.getenv("APP_ENV"))
+                || (Database.isProductionRuntime()
                 && "https".equalsIgnoreCase(httpRequest.getHeader("X-Forwarded-Proto")));
         HttpServletResponseWrapper wrapped = new HttpServletResponseWrapper(httpResponse) {
             @Override

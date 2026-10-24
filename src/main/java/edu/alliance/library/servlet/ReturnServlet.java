@@ -25,7 +25,7 @@ public class ReturnServlet extends HttpServlet {
             request.setAttribute("issues", issues.activeIssues(request.getParameter("q")));
             request.getRequestDispatcher("/WEB-INF/views/returns.jsp").forward(request, response);
         } catch (SQLException e) {
-            getServletContext().log("Active issues could not be loaded", e);
+            getServletContext().log("Active issues could not be loaded " + edu.alliance.library.util.Database.safeDiagnostic(e));
             request.setAttribute("error", "Active loans are temporarily unavailable.");
             request.getRequestDispatcher("/WEB-INF/views/error.jsp").forward(request, response);
         }
@@ -41,7 +41,7 @@ public class ReturnServlet extends HttpServlet {
             request.setAttribute("error", e.getMessage());
             load(request, response);
         } catch (SQLException e) {
-            getServletContext().log("Return transaction failed", e);
+            getServletContext().log("Return transaction failed " + edu.alliance.library.util.Database.safeDiagnostic(e));
             request.setAttribute("error", "The return could not be completed. Please try again.");
             load(request, response);
         }

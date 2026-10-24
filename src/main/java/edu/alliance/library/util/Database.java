@@ -1,5 +1,9 @@
 package edu.alliance.library.util;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -7,44 +11,155 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 public final class Database {
     private static final String DB_DIRECTORY = ".alliance-smart-library";
     private static volatile boolean embeddedInitialized;
+    private static volatile boolean mySqlInitialized;
+    private static final Pattern REQUIRED_SSL_MODE =
+            Pattern.compile("(?i)(?:^|&)sslMode=(?:REQUIRED|VERIFY_CA|VERIFY_IDENTITY)(?:&|$)");
 
     private Database() { }
 
     public static Connection getConnection() throws SQLException {
-        boolean production = "production".equalsIgnoreCase(System.getenv("APP_ENV"));
-        String embeddedPath = System.getProperty("alliance.library.database.path");
-        if (!production && !isBlank(embeddedPath)) return getEmbeddedConnection(embeddedPath);
-
-        String url = System.getenv("LIBRARY_DB_URL");
-        String user = System.getenv("LIBRARY_DB_USER");
+        boolean production = isProductionRuntime();
+        String url = environmentValue("LIBRARY_DB_URL");
+        String user = environmentValue("LIBRARY_DB_USER");
         String password = System.getenv("LIBRARY_DB_PASSWORD");
         boolean anyMySqlSetting = url != null || user != null || password != null;
         if (anyMySqlSetting && (isBlank(url) || isBlank(user) || isBlank(password))) {
-            throw new SQLException("Database settings are incomplete. Set all LIBRARY_DB_* values.", "08001");
+            String environment = production ? "Production database" : "Database";
+            throw new SQLException(environment + " configuration is incomplete. Set LIBRARY_DB_URL, LIBRARY_DB_USER, and LIBRARY_DB_PASSWORD.", "08001");
+        }
+        if (production && !anyMySqlSetting) {
+            throw new SQLException("Production database configuration is missing. Set LIBRARY_DB_URL, LIBRARY_DB_USER, and LIBRARY_DB_PASSWORD.", "08001");
         }
         if (anyMySqlSetting) {
-            if (production && !url.startsWith("jdbc:mysql:")) {
-                throw new SQLException("Production must use the configured managed MySQL database.", "08001");
+            if (!url.startsWith("jdbc:mysql://")) {
+                throw new SQLException("LIBRARY_DB_URL must use the jdbc:mysql:// scheme.", "08001");
             }
+            if (production) validateProductionUrl(url);
             return getMySqlConnection(url, user, password);
         }
-        if (production) {
-            throw new SQLException("Production database settings are required.", "08001");
+
+        String embeddedPath = System.getProperty("alliance.library.database.path");
+        return getEmbeddedConnection(embeddedPath);
+    }
+
+    public static boolean isProductionRuntime() {
+        String appEnvironment = System.getenv("APP_ENV");
+        return "production".equalsIgnoreCase(appEnvironment)
+                || !isBlank(System.getenv("RENDER_SERVICE_ID"))
+                || "true".equalsIgnoreCase(System.getenv("RENDER"));
+    }
+
+    public static String failureMessage(SQLException exception) {
+        String message = exception.getMessage();
+        if (message != null && message.startsWith("Production database configuration")) {
+            return "Production database configuration is missing. Set LIBRARY_DB_URL, LIBRARY_DB_USER, and LIBRARY_DB_PASSWORD in Render, then restart the service.";
         }
-        return getEmbeddedConnection(null);
+        if (message != null && message.startsWith("Database configuration is incomplete")) {
+            return "Database configuration is incomplete. Set LIBRARY_DB_URL, LIBRARY_DB_USER, and LIBRARY_DB_PASSWORD, or remove all three to use the local database.";
+        }
+        if (message != null && message.startsWith("LIBRARY_DB_URL")) {
+            return "LIBRARY_DB_URL must contain the hosted MySQL hostname, port, database name, and a required SSL mode.";
+        }
+        boolean mysqlConfigured = !isBlank(System.getenv("LIBRARY_DB_URL"));
+        if (!isProductionRuntime() && !mysqlConfigured) {
+            if (isConnectionFailure(exception)) {
+                return "The local library database could not be opened. Check that your Windows account can write to its .alliance-smart-library folder, then restart Tomcat.";
+            }
+            return "The local library database could not be initialized. Check the application log, then restart the app.";
+        }
+        String sqlState = exception.getSQLState();
+        if (sqlState != null && sqlState.startsWith("28")) {
+            return "The configured MySQL server rejected the configured credentials. Check LIBRARY_DB_USER and LIBRARY_DB_PASSWORD.";
+        }
+        if (isConnectionFailure(exception)) {
+            return "The configured MySQL database could not be reached. Check the hosted hostname, port, database name, SSL mode, credentials, and database network access.";
+        }
+        return "The MySQL schema could not be initialized. Confirm the database exists and the app user can create and alter its tables without deleting existing data.";
+    }
+
+    public static String safeDiagnostic(SQLException exception) {
+        String state = exception.getSQLState();
+        if (state == null || !state.matches("[A-Z0-9]{5}")) state = "unknown";
+        return "(SQLState=" + state + ", vendorCode=" + exception.getErrorCode() + ")";
+    }
+
+    private static boolean isConnectionFailure(SQLException exception) {
+        String state = exception.getSQLState();
+        return state != null && state.startsWith("08");
+    }
+
+    static void validateProductionUrl(String url) throws SQLException {
+        try {
+            URI uri = URI.create(url.substring("jdbc:".length()));
+            String path = uri.getPath();
+            if (uri.getHost() == null || uri.getPort() < 1 || path == null || path.length() < 2
+                    || uri.getQuery() == null || !REQUIRED_SSL_MODE.matcher(uri.getQuery()).find()) {
+                throw new IllegalArgumentException();
+            }
+        } catch (IllegalArgumentException e) {
+            throw new SQLException(
+                    "LIBRARY_DB_URL must contain a hosted MySQL hostname, explicit port, database name, and sslMode=REQUIRED, VERIFY_CA, or VERIFY_IDENTITY.",
+                    "08001");
+        }
     }
 
     private static Connection getMySqlConnection(String url, String user, String password) throws SQLException {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
-            throw new SQLException("The MySQL JDBC driver is not available to the application.", "08001", e);
+            throw new SQLException("The MySQL JDBC driver is not available to the application.", "08001");
         }
-        return DriverManager.getConnection(url, user, password);
+        Connection connection;
+        try {
+            connection = DriverManager.getConnection(url, user, password);
+        } catch (SQLException e) {
+            throw new SQLException("Could not connect to the configured production MySQL database.", e.getSQLState(), e.getErrorCode());
+        }
+        try {
+            initializeMySqlDatabase(connection);
+            return connection;
+        } catch (SQLException e) {
+            try {
+                connection.close();
+            } catch (SQLException closeException) {
+                e.addSuppressed(closeException);
+            }
+            throw new SQLException("Could not safely initialize the production MySQL schema.", e.getSQLState(), e.getErrorCode());
+        }
+    }
+
+    private static void initializeMySqlDatabase(Connection connection) throws SQLException {
+        if (mySqlInitialized) return;
+        synchronized (Database.class) {
+            if (mySqlInitialized) return;
+            try (InputStream schema = Database.class.getClassLoader().getResourceAsStream("db/schema.sql")) {
+                if (schema == null) {
+                    throw new SQLException("The MySQL schema resource is missing.", "HY000");
+                }
+                StringBuilder script = new StringBuilder();
+                for (String line : new String(schema.readAllBytes(), StandardCharsets.UTF_8).split("\\R")) {
+                    if (!line.stripLeading().startsWith("--")) script.append(line).append('\n');
+                }
+                try (var statement = connection.createStatement()) {
+                    for (String sql : script.toString().split(";")) {
+                        String command = sql.trim();
+                        String normalized = command.toUpperCase(Locale.ROOT);
+                        if (command.isEmpty() || normalized.startsWith("CREATE DATABASE")
+                                || normalized.startsWith("USE ")) continue;
+                        statement.execute(command);
+                    }
+                }
+                mySqlInitialized = true;
+            } catch (IOException e) {
+                throw new SQLException("The MySQL schema resource could not be read.", "HY000");
+            }
+        }
     }
 
     private static Connection getEmbeddedConnection(String configuredPath) throws SQLException {
@@ -269,5 +384,10 @@ public final class Database {
 
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private static String environmentValue(String name) {
+        String value = System.getenv(name);
+        return value == null ? null : value.trim();
     }
 }

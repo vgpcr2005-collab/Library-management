@@ -1,5 +1,6 @@
 package edu.alliance.library.filter;
 
+import edu.alliance.library.util.Database;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -7,7 +8,6 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import java.io.IOException;
 
 public class SecurityHeadersFilter implements Filter {
@@ -16,7 +16,7 @@ public class SecurityHeadersFilter implements Filter {
             throws IOException, ServletException {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
-        boolean production = "production".equalsIgnoreCase(System.getenv("APP_ENV"));
+        boolean production = Database.isProductionRuntime();
         boolean forwardedHttps = "https".equalsIgnoreCase(httpRequest.getHeader("X-Forwarded-Proto"));
         if (production && !httpRequest.isSecure() && !forwardedHttps) {
             httpResponse.sendError(HttpServletResponse.SC_FORBIDDEN, "Use the secure HTTPS website URL.");

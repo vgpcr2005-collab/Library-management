@@ -24,7 +24,7 @@ public class StudentsServlet extends HttpServlet {
             request.setAttribute("students", students.search(request.getParameter("q")));
             request.getRequestDispatcher("/WEB-INF/views/students.jsp").forward(request, response);
         } catch (SQLException e) {
-            getServletContext().log("Student list could not be loaded", e);
+            getServletContext().log("Student list could not be loaded " + edu.alliance.library.util.Database.safeDiagnostic(e));
             request.setAttribute("error", "Student records are temporarily unavailable.");
             request.getRequestDispatcher("/WEB-INF/views/error.jsp").forward(request, response);
         }
@@ -48,7 +48,7 @@ public class StudentsServlet extends HttpServlet {
             request.setAttribute("error", e.getMessage());
             load(request, response);
         } catch (SQLException e) {
-            getServletContext().log("Student update failed", e);
+            getServletContext().log("Student update failed " + edu.alliance.library.util.Database.safeDiagnostic(e));
             request.setAttribute("error", "Student details could not be updated. Check for duplicate email or student ID.");
             load(request, response);
         }

@@ -24,7 +24,7 @@ public class SettingsServlet extends HttpServlet {
             request.setAttribute("settings", settings.all());
             request.getRequestDispatcher("/WEB-INF/views/settings.jsp").forward(request, response);
         } catch (SQLException e) {
-            getServletContext().log("Settings could not be loaded", e);
+            getServletContext().log("Settings could not be loaded " + edu.alliance.library.util.Database.safeDiagnostic(e));
             request.setAttribute("error", "Library settings are temporarily unavailable.");
             request.getRequestDispatcher("/WEB-INF/views/error.jsp").forward(request, response);
         }
@@ -46,7 +46,7 @@ public class SettingsServlet extends HttpServlet {
             request.setAttribute("error", e.getMessage());
             load(request, response);
         } catch (SQLException e) {
-            getServletContext().log("Settings update failed", e);
+            getServletContext().log("Settings update failed " + edu.alliance.library.util.Database.safeDiagnostic(e));
             request.setAttribute("error", "Settings could not be saved.");
             load(request, response);
         }

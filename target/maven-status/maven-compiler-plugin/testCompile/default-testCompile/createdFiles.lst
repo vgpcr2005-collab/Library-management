@@ -1,3 +1,4 @@
 edu\alliance\library\EmbeddedDatabaseTest.class
 edu\alliance\library\InputValidatorTest.class
+edu\alliance\library\util\DatabaseConfigurationTest.class
 edu\alliance\library\DomainModelTest.class

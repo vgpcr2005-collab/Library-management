@@ -31,7 +31,7 @@ public class BooksServlet extends HttpServlet {
             request.setAttribute("searchFields", library.searchFields());
             request.getRequestDispatcher("/WEB-INF/views/books.jsp").forward(request, response);
         } catch (SQLException e) {
-            getServletContext().log("Book catalog could not be loaded", e);
+            getServletContext().log("Book catalog could not be loaded " + edu.alliance.library.util.Database.safeDiagnostic(e));
             request.setAttribute("error", "The book catalog is temporarily unavailable.");
             request.getRequestDispatcher("/WEB-INF/views/error.jsp").forward(request, response);
         }
@@ -61,7 +61,7 @@ public class BooksServlet extends HttpServlet {
             request.setAttribute("error", e.getMessage());
             load(request, response);
         } catch (SQLException e) {
-            getServletContext().log("Book update failed", e);
+            getServletContext().log("Book update failed " + edu.alliance.library.util.Database.safeDiagnostic(e));
             request.setAttribute("error", "The book could not be saved. Check for a duplicate ISBN and try again.");
             load(request, response);
         }

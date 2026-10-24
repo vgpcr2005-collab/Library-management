@@ -32,7 +32,7 @@ public class ReportsServlet extends HttpServlet {
         } catch (IllegalArgumentException e) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         } catch (SQLException e) {
-            getServletContext().log("Report query failed", e);
+            getServletContext().log("Report query failed " + edu.alliance.library.util.Database.safeDiagnostic(e));
             request.setAttribute("error", "The requested report is temporarily unavailable.");
             request.getRequestDispatcher("/WEB-INF/views/error.jsp").forward(request, response);
         }

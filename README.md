@@ -47,7 +47,24 @@ For local development, the app creates its H2 schema and starter library/student
 
 The first launch includes sample books and two sample student records for demonstration. Additions, edits, loans, returns, and settings are persisted in the local database. Stop Tomcat before backing up or moving the database file.
 
-Production uses MySQL. The app requires all three database environment variables and will refuse to start database operations in `APP_ENV=production` if they are incomplete. Apply `src/main/resources/db/schema.sql` before deploying the application; it seeds the non-login system operator used to attribute issue/return transactions.
+Production uses MySQL. The app requires all three database environment variables and will refuse to start database operations in `APP_ENV=production` if they are incomplete. The app initializes required tables from `src/main/resources/db/schema.sql` on first connection; the database itself must already exist, and the script seeds the non-login system operator used to attribute issue/return transactions.
+
+## Render deployment
+
+The root `render.yaml` describes a Docker web service and declares the database settings as secrets to enter in the Render dashboard. Create a persistent, remotely accessible MySQL database with your database provider first; Render does not supply this application's MySQL server. Create the database and a dedicated app user, then give that user `CREATE`, `ALTER`, `INDEX`, `REFERENCES`, `SELECT`, `INSERT`, `UPDATE`, and `DELETE` privileges on that database. The app runs the bundled `src/main/resources/db/schema.sql` against the selected database on first connection using `CREATE TABLE IF NOT EXISTS` and safe seed statements. It skips the script's `CREATE DATABASE` and `USE alliance_library` commands, so create the database with your provider first. Existing tables and records are not dropped or reset.
+
+Set these values under **Render → web service → Environment** (the Blueprint declares the names, but you must supply the actual provider values):
+
+| Variable | Value |
+|---|---|
+| `APP_ENV` | `production` |
+| `LIBRARY_DB_URL` | `jdbc:mysql://<host>:<port>/<database>?sslMode=VERIFY_IDENTITY&serverTimezone=UTC` |
+| `LIBRARY_DB_USER` | The dedicated MySQL application username |
+| `LIBRARY_DB_PASSWORD` | The application user's password, stored as a Render secret |
+
+Use the exact hostname, port, and database name from your MySQL provider's connection details; do not use `localhost`, the sample hostname, or a Windows path. Keep credentials only in Render's environment settings. If your provider does not support certificate hostname verification, use `sslMode=REQUIRED` instead; TLS is mandatory. Allow the Render service to reach the database using your provider's network/allow-list settings. Redeploy or restart after setting variables. The service fails closed instead of using local H2 when it detects Render or `APP_ENV=production`. The Docker entrypoint binds Tomcat to Render's `PORT`, with 8080 as the local/container default.
+
+The database host and credentials have not been verified by this repository build. A successful Maven build does not test Render networking or connect to your hosted MySQL instance.
 
 ## Build and run locally
 

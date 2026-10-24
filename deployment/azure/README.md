@@ -44,7 +44,7 @@ Create a separate app account; do not use the MySQL administrator for the websit
 
 ```sql
 CREATE USER 'library_app'@'%' IDENTIFIED BY 'REPLACE_WITH_A_NEW_RANDOM_SECRET' REQUIRE SSL;
-GRANT SELECT, INSERT, UPDATE, DELETE ON alliance_library.* TO 'library_app'@'%';
+GRANT CREATE, ALTER, INDEX, REFERENCES, SELECT, INSERT, UPDATE, DELETE ON alliance_library.* TO 'library_app'@'%';
 ```
 
 Use a new, unique password. Do not put it in source files or commit it. Add these two secrets in the provisioned Key Vault using the Azure portal:
@@ -61,7 +61,7 @@ In App Service **Configuration → Application settings**, add:
 - `LIBRARY_DB_USER` = `@Microsoft.KeyVault(SecretUri=https://<key-vault-name>.vault.azure.net/secrets/library-db-user)`
 - `LIBRARY_DB_PASSWORD` = `@Microsoft.KeyVault(SecretUri=https://<key-vault-name>.vault.azure.net/secrets/library-db-password)`
 
-The `APP_ENV=production` setting and HTTPS-only website configuration are provided by the template. The root Docker image starts the dashboard as the default page. For an existing MySQL database, run the updated `src/main/resources/db/schema.sql` before using issue/return actions; it seeds the non-login system operator used for transaction attribution.
+The `APP_ENV=production` setting and HTTPS-only website configuration are provided by the template. The root Docker image starts the dashboard as the default page. On first connection, the app initializes missing tables from `src/main/resources/db/schema.sql` using non-destructive `CREATE TABLE IF NOT EXISTS` statements and safe seeds; ensure the app user has the schema permissions above. Existing tables and records are retained.
 
 Key Vault references resolve through the App Service's system-assigned identity. If the reference status is unresolved, check the Key Vault secret names, the `Key Vault Secrets User` role assignment, and the Web App's identity before retrying.
 
@@ -75,6 +75,6 @@ The generated App Service outbound IP list is included in MySQL firewall rules. 
 
 - The entire website is public. Anyone can read, add, change, or delete library and student records, issue/return books, and change settings.
 - CSRF validation covers POST forms; it mitigates cross-site request forgery but does not prevent direct public access.
-- The application requires `APP_ENV=production` in Azure, rejects missing production database configuration, and never falls back to the local H2 file.
+- The application requires `APP_ENV=production` and the MySQL environment variables, rejects missing production database configuration, and never falls back to the local H2 file.
 - User-managed browser-to-App-Service traffic is HTTPS-only. MySQL uses a per-IP firewall allow-list and TLS certificate/hostname verification.
 - This configuration is for a development/demo deployment only. Do not use production student data or institutional workloads without restoring authentication and authorization.
