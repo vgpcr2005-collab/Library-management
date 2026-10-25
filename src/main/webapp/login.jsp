@@ -5,7 +5,7 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#173b32">
   <title>Sign in | Alliance University Library</title>
-  <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/app.css">
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/app.css?v=library-motion-20261025">
 </head>
 <body class="app-body login-page">
 <div class="login-atmosphere" aria-hidden="true"><span></span><span></span><span></span></div>
