@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#173b32">
   <title>Student registration | Alliance University Library</title>
   <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/app.css">
   <script defer src="${pageContext.request.contextPath}/assets/js/app.js"></script>
