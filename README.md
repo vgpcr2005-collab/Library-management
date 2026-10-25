@@ -64,6 +64,8 @@ Set these values under **Render → web service → Environment** (the Blueprint
 
 Use the exact hostname, port, and database name from your MySQL provider's connection details; do not use `localhost`, the sample hostname, or a Windows path. Keep credentials only in Render's environment settings. If your provider does not support certificate hostname verification, use `sslMode=REQUIRED` instead; TLS is mandatory. Allow the Render service to reach the database using your provider's network/allow-list settings. Redeploy or restart after setting variables. The service fails closed instead of using local H2 when it detects Render or `APP_ENV=production`. The Docker entrypoint binds Tomcat to Render's `PORT`, with 8080 as the local/container default.
 
+The Docker image disables Tomcat's shutdown socket so Render's HTTP health checks cannot be mistaken for shutdown commands; Tomcat serves HTTP on Render's injected `PORT` (8080 when running locally). The Blueprint health check requests `/`. If the service's Render settings specify a custom port, it must match the port the container listens on; never set the web service port to Tomcat's shutdown port (8005).
+
 The database host and credentials have not been verified by this repository build. A successful Maven build does not test Render networking or connect to your hosted MySQL instance.
 
 ## Build and run locally
