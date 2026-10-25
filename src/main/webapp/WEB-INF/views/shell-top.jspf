@@ -21,11 +21,15 @@
     <nav class="side-nav" aria-label="Main navigation">
       <a href="${pageContext.request.contextPath}/app/dashboard"><span aria-hidden="true">D</span> Dashboard</a>
       <a href="${pageContext.request.contextPath}/app/books"><span aria-hidden="true">B</span> Book catalogue</a>
+      <c:if test="${sessionScope.account.role eq 'STUDENT'}"><a href="${pageContext.request.contextPath}/app/my-library"><span aria-hidden="true">M</span> My library</a></c:if>
+      <c:if test="${sessionScope.account.role ne 'STUDENT'}">
       <a href="${pageContext.request.contextPath}/app/students"><span aria-hidden="true">S</span> Students</a>
       <a href="${pageContext.request.contextPath}/app/issue"><span aria-hidden="true">I</span> Issue a book</a>
       <a href="${pageContext.request.contextPath}/app/return"><span aria-hidden="true">R</span> Returns &amp; overdue</a>
+      <a href="${pageContext.request.contextPath}/app/requests"><span aria-hidden="true">Q</span> Book requests</a>
       <a href="${pageContext.request.contextPath}/app/reports"><span aria-hidden="true">R</span> Reports</a>
       <a href="${pageContext.request.contextPath}/app/settings"><span aria-hidden="true">S</span> Library settings</a>
+      </c:if>
     </nav>
     <div class="sidebar-label sidebar-label-spaced">PROJECT</div>
     <nav class="side-nav" aria-label="Project information">
@@ -33,13 +37,16 @@
       <a href="${pageContext.request.contextPath}/app/concepts"><span aria-hidden="true">J</span> Java concepts</a>
       <a href="${pageContext.request.contextPath}/app/architecture"><span aria-hidden="true">A</span> Architecture</a>
     </nav>
-    <div class="sidebar-foot"><span class="status-dot"></span> Library demo <span>No account</span></div>
+    <div class="sidebar-foot"><span class="status-dot"></span> Signed in <span><c:out value="${sessionScope.account.fullName}"/></span></div>
   </aside>
   <div class="main-area">
     <header class="topbar">
       <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" data-menu-toggle>|||</button>
       <div class="topbar-title"><span>ALLIANCE UNIVERSITY</span><small>SMART LIBRARY MANAGEMENT SYSTEM</small></div>
-      <span class="topbar-mode">DEMO MODE</span>
+      <span class="topbar-mode">${sessionScope.account.role eq 'STUDENT' ? 'STUDENT' : 'FACULTY / STAFF'}</span>
+      <form method="post" action="${pageContext.request.contextPath}/logout" class="inline-form">
+        <input type="hidden" name="csrfToken" value="${csrfToken}"><button class="button button-outline button-small" type="submit">Sign out</button>
+      </form>
     </header>
     <main class="page-content">
       <c:if test="${not empty success}"><div class="notice notice-success" role="status"><c:out value="${success}"/></div></c:if>

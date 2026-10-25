@@ -1,6 +1,7 @@
 package edu.alliance.library.servlet;
 
 import edu.alliance.library.dao.DashboardDao;
+import edu.alliance.library.model.Account;
 import edu.alliance.library.util.Database;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -16,6 +17,11 @@ public class DashboardServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        Account account = (Account) request.getSession().getAttribute("account");
+        if (account.isStudent()) {
+            response.sendRedirect(request.getContextPath() + "/app/my-library");
+            return;
+        }
         try {
             request.setAttribute("stats", dashboard.statistics());
             request.getRequestDispatcher("/WEB-INF/views/dashboard.jsp").forward(request, response);

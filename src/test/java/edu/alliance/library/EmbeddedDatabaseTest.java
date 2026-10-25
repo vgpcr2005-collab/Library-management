@@ -1,9 +1,11 @@
 package edu.alliance.library;
 
 import edu.alliance.library.dao.BookDao;
+import edu.alliance.library.dao.AccountDao;
 import edu.alliance.library.dao.DashboardDao;
 import edu.alliance.library.dao.IssueDao;
 import edu.alliance.library.dao.LibraryOperatorDao;
+import edu.alliance.library.dao.LibraryRequestDao;
 import edu.alliance.library.dao.ReportDao;
 import edu.alliance.library.dao.StudentDao;
 import edu.alliance.library.util.Database;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class EmbeddedDatabaseTest {
@@ -52,7 +55,7 @@ class EmbeddedDatabaseTest {
         BookDao books = new BookDao();
         StudentDao students = new StudentDao();
         IssueDao issues = new IssueDao();
-        assertEquals(5, books.search("", "", "").size());
+        assertEquals(10, books.search("", "", "").size());
         assertEquals(2, students.search("").size());
 
         long bookId = findId("SELECT id FROM books WHERE isbn=?", "9780132350884");
@@ -75,6 +78,25 @@ class EmbeddedDatabaseTest {
         List<Map<String, Object>> monthlyReport = new ReportDao().get("monthly", null);
         assertEquals(1, monthlyReport.size());
         assertEquals(1, ((Number) monthlyReport.get(0).get("issued")).intValue());
+
+        char[] password = "a-secure-test-password".toCharArray();
+        var accountDao = new AccountDao();
+        var registered = accountDao.registerStudent("new.student@example.edu", "New Student",
+                "AU-TEST-2001", "Computer Science", "+91 90000 20001", password);
+        assertEquals("STUDENT", registered.role());
+        assertEquals(registered, accountDao.authenticate(registered.email(), password));
+        assertNull(accountDao.authenticate(registered.email(), "wrong-password".toCharArray()));
+
+        LibraryRequestDao requests = new LibraryRequestDao();
+        requests.requestBook(registered.studentRecordId(), bookId);
+        assertThrows(IllegalArgumentException.class, () -> requests.requestBook(registered.studentRecordId(), bookId));
+        assertEquals(1, requests.pending().size());
+        requests.process(((Number) requests.pending().get(0).get("id")).longValue(), operatorId, true);
+        var newLoan = new IssueDao().history(registered.studentRecordId()).get(0);
+        long newIssueId = ((Number) newLoan.get("id")).longValue();
+        requests.requestRenewal(registered.studentRecordId(), newIssueId);
+        requests.process(((Number) requests.pending().get(0).get("id")).longValue(), operatorId, true);
+        assertThrows(IllegalArgumentException.class, () -> requests.requestRenewal(registered.studentRecordId(), newIssueId));
     }
 
     private long findId(String sql, Object value) throws SQLException {

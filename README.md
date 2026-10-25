@@ -1,8 +1,8 @@
 # Alliance University — Smart Library Management System
 
-A responsive library website for Alliance University. The project uses Java 17, JSP, Jakarta Servlets, JDBC, MySQL, and Apache Tomcat 10.1, with an embedded H2 database for local development. The dashboard opens directly, and library operations are available without sign-in in both local and deployed demo environments.
+A responsive library website for Alliance University. The project uses Java 17, JSP, Jakarta Servlets, JDBC, MySQL, and Apache Tomcat 10.1, with an embedded H2 database for local development. The landing page opens the sign-in screen; students can register, and staff sign-in is provisioned privately.
 
-> **Security warning:** This is an unauthenticated demo. Anyone who can reach a deployed instance can view and modify library records, including student names, email addresses, phone numbers, loans, and settings. Do not use real personal data or expose it as an institutional production system. CSRF tokens and HTTPS do not provide access control.
+> **Security note:** Student registration checks email syntax but does not verify university identity. Provision staff accounts privately and require institutional identity verification/SSO, operational monitoring, and security review before using real student data in production. Facial recognition and biometric data collection are not included.
 >
 > **Local note:** Local development remains restricted to this computer. **Deployed note:** Production mode requires MySQL settings and HTTPS and will not fall back to embedded H2.
 
@@ -47,7 +47,9 @@ For local development, the app creates its H2 schema and starter library/student
 
 The first launch includes sample books and two sample student records for demonstration. Additions, edits, loans, returns, and settings are persisted in the local database. Stop Tomcat before backing up or moving the database file.
 
-Production uses MySQL. The app requires all three database environment variables and will refuse to start database operations in `APP_ENV=production` if they are incomplete. The app initializes required tables from `src/main/resources/db/schema.sql` on first connection; the database itself must already exist, and the script seeds the non-login system operator used to attribute issue/return transactions.
+To create the initial staff account, configure `LIBRARY_STAFF_EMAIL` and `LIBRARY_STAFF_PASSWORD` in the Tomcat process environment before starting the application. Use a unique staff email and a password of at least 12 characters. The account is created as a librarian on first database initialization; an existing staff account with no password can be provisioned once this way. These variables are only used to establish an account and do not reset a non-empty password. Keep the password in a local secret store and never commit it.
+
+Production uses MySQL. The app requires all three database environment variables and will refuse to start database operations in `APP_ENV=production` if they are incomplete. The app initializes required tables from `src/main/resources/db/schema.sql` on first connection; the database itself must already exist.
 
 ## Render deployment
 
@@ -61,6 +63,8 @@ Set these values under **Render → web service → Environment** (the Blueprint
 | `LIBRARY_DB_URL` | `jdbc:mysql://<host>:<port>/<database>?sslMode=VERIFY_IDENTITY&serverTimezone=UTC` |
 | `LIBRARY_DB_USER` | The dedicated MySQL application username |
 | `LIBRARY_DB_PASSWORD` | The application user's password, stored as a Render secret |
+| `LIBRARY_STAFF_EMAIL` | The initial staff sign-in email, stored as a Render environment variable |
+| `LIBRARY_STAFF_PASSWORD` | A strong initial staff password, stored as a Render secret |
 
 Use the exact hostname, port, and database name from your MySQL provider's connection details; do not use `localhost`, the sample hostname, or a Windows path. Keep credentials only in Render's environment settings. If your provider does not support certificate hostname verification, use `sslMode=REQUIRED` instead; TLS is mandatory. Allow the Render service to reach the database using your provider's network/allow-list settings. Redeploy or restart after setting variables. The service fails closed instead of using local H2 when it detects Render or `APP_ENV=production`. The Docker entrypoint binds Tomcat to Render's `PORT`, with 8080 as the local/container default.
 
@@ -87,7 +91,7 @@ The database host and credentials have not been verified by this repository buil
 
    The script stops Tomcat, deploys the WAR, and starts the local-only website. Keep the PowerShell window open while using the site.
 4. Alternatively, deploy the WAR to Tomcat from your IDE with no `APP_ENV=production` value; the app uses the embedded local database.
-5. Open `http://localhost:8080/smart-library/`. The dashboard opens directly.
+5. Open `http://localhost:8080/smart-library/`. Sign in with the provisioned staff account or register as a student.
 
 ### IDE notes
 
@@ -97,15 +101,19 @@ The database host and credentials have not been verified by this repository buil
 
 ## Access and security
 
-- Local mode restricts requests to this computer. In production, all library pages and state-changing operations are public; staff accounts are not used for access control.
-- All state-changing forms use CSRF tokens. HTTPS, security headers, database constraints, and input validation remain enabled, but none replaces authentication or protects records from public users.
+- Local mode restricts requests to this computer. Sign-in is required for all application pages. Student accounts can browse books, update their own profile, view their loans, and request borrowing/renewal; staff accounts can manage students, books, circulation, requests, reports, and settings.
+- Public registration creates student accounts only; staff accounts must be provisioned with `LIBRARY_STAFF_EMAIL` and `LIBRARY_STAFF_PASSWORD`. Passwords are stored as PBKDF2-HMAC-SHA256 hashes, and successful sign-in rotates the session.
+- All state-changing forms use CSRF tokens. HTTPS, security headers, database constraints, role checks, and input validation are enabled. For institutional use, configure identity verification/SSO and operational controls appropriate to student records.
 - Production mode requires HTTPS and MySQL and disables the embedded-database fallback.
 
 ## Features
 
 - Database-calculated dashboard statistics, six-month activity, categories, recently issued books, and most-borrowed leaderboard.
 - Search by title/author/ISBN/category, category and availability filters, visual stock status, and low-stock hints.
-- Student directory search and validated profile updates.
+- Student self-registration, sign-in, profile updates, and a private borrowing history.
+- Student borrowing and renewal requests with staff review and approval.
+- Role-based access: students browse the catalogue and see their own records; staff manage students, books, circulation, reports, and settings.
+- Student directory search and validated staff profile updates.
 - Issue transactions lock the selected inventory row, enforce reference-only rules and configured student limits, and commit availability and loan records atomically.
 - Return transactions prevent duplicate returns, restore inventory, and calculate the fine from configured daily rate and overdue days in one transaction.
 - Available/issued/overdue/history/popularity/monthly reports, with CSV download.
@@ -114,7 +122,7 @@ The database host and credentials have not been verified by this repository buil
 
 ## Database tables
 
-`users`, `students`, `books`, `book_issues`, `book_returns`, and `library_settings` are created by the application on first local use or by `schema.sql` in MySQL. Foreign keys, uniqueness rules, indexes, and check constraints protect core records. Issue and return records use a seeded non-login system operator for attribution. Circulation uses explicit JDBC transactions and row locks.
+`users`, `students`, `books`, `book_issues`, `book_returns`, `book_requests`, and `library_settings` are created by the application on first local use or by `schema.sql` in MySQL. Foreign keys, uniqueness rules, indexes, and check constraints protect core records. Issue and return records are attributed to the signed-in staff account. Circulation and request decisions use explicit JDBC transactions and row locks.
 
 ## Java concepts mapping
 
@@ -130,13 +138,16 @@ The in-app **Java concepts** page explains these examples. **About Project** and
 
 ## Tests and acceptance checklist
 
-Run automated tests with `mvn clean verify`. Tests cover domain validation, runtime polymorphism, embedded database initialization, system-operator attribution, and issue/return transactions.
+Run automated tests with `mvn clean verify`. Tests cover domain validation, password hashing, embedded database initialization, student registration/sign-in, request approval, and issue/return transactions.
 
 | Scenario | Expected result |
 |---|---|
-| Open the site root or the legacy login URL | Opens the dashboard |
-| Open the local dashboard | Loads directly and remains loopback-only |
-| Issue/return a book | The system operator is recorded; inventory updates atomically |
+| Open the site root | Opens the sign-in page |
+| Register as a student | Creates a student-only account with a unique email and student ID |
+| Sign in as a student | Shows the student's own profile and loan history; staff-only pages are denied |
+| Sign in as staff | Opens the staff dashboard and management tools |
+| Student request or renewal | Appears in the staff request queue and is processed atomically with the configured borrowing rules |
+| Issue/return a book | The signed-in staff account is recorded; inventory updates atomically |
 | Add/edit book with duplicate ISBN | Database uniqueness prevents duplicate; useful error is shown |
 | Issue available book | Availability decreases and issue/due dates persist together |
 | Issue unavailable/reference book or exceed limit | Request rejected without inventory mutation |

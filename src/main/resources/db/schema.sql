@@ -69,6 +69,23 @@ CREATE TABLE IF NOT EXISTS book_returns (
   CONSTRAINT chk_fine CHECK (fine_amount >= 0)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS book_requests (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  student_id BIGINT NOT NULL,
+  book_id BIGINT NOT NULL,
+  issue_id BIGINT NULL,
+  request_type ENUM('BORROW','RENEW') NOT NULL,
+  status ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
+  requested_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  processed_by BIGINT NULL,
+  processed_at TIMESTAMP NULL,
+  CONSTRAINT fk_requests_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_requests_book FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_requests_issue FOREIGN KEY (issue_id) REFERENCES book_issues(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_requests_user FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE RESTRICT,
+  INDEX idx_book_requests_status (status, requested_at)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS library_settings (
   setting_key VARCHAR(60) PRIMARY KEY,
   setting_value VARCHAR(120) NOT NULL
@@ -77,3 +94,11 @@ CREATE TABLE IF NOT EXISTS library_settings (
 INSERT INTO library_settings (setting_key, setting_value) VALUES
   ('loan_days', '14'), ('fine_per_day', '5.00'), ('borrowing_limit', '5')
 ON DUPLICATE KEY UPDATE setting_key = VALUES(setting_key);
+
+INSERT INTO books (isbn, title, author, category, total_copies, available_copies, reference_only) VALUES
+('9780134685991', 'Effective Java', 'Joshua Bloch', 'Software Engineering', 5, 5, FALSE),
+('9781449373320', 'Designing Data-Intensive Applications', 'Martin Kleppmann', 'Databases', 4, 4, FALSE),
+('9780596007126', 'Head First Design Patterns', 'Eric Freeman and Elisabeth Robson', 'Software Engineering', 3, 3, FALSE),
+('9780135957059', 'The Pragmatic Programmer', 'David Thomas and Andrew Hunt', 'Software Engineering', 4, 4, FALSE),
+('9781593279288', 'Python Crash Course', 'Eric Matthes', 'Programming', 5, 5, FALSE)
+ON DUPLICATE KEY UPDATE title = VALUES(title);

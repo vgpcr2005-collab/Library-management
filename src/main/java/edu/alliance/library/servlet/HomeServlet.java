@@ -4,10 +4,11 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import edu.alliance.library.model.Account;
 
 import java.io.IOException;
 
-@WebServlet(urlPatterns = {"", "/login", "/register"})
+@WebServlet(urlPatterns = {""})
 public class HomeServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -20,6 +21,7 @@ public class HomeServlet extends HttpServlet {
     }
 
     private void openDashboard(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        response.sendRedirect(request.getContextPath() + "/app/dashboard");
+        Account account = (Account) request.getSession().getAttribute("account");
+        response.sendRedirect(request.getContextPath() + (account == null ? "/login" : "/app/dashboard"));
     }
 }

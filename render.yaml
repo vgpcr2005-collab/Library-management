@@ -4,7 +4,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /
+    healthCheckPath: /login
     envVars:
       - key: APP_ENV
         value: production
@@ -13,4 +13,8 @@ services:
       - key: LIBRARY_DB_USER
         sync: false
       - key: LIBRARY_DB_PASSWORD
+        sync: false
+      - key: LIBRARY_STAFF_EMAIL
+        sync: false
+      - key: LIBRARY_STAFF_PASSWORD
         sync: false

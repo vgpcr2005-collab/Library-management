@@ -47,10 +47,11 @@ CREATE USER 'library_app'@'%' IDENTIFIED BY 'REPLACE_WITH_A_NEW_RANDOM_SECRET' R
 GRANT CREATE, ALTER, INDEX, REFERENCES, SELECT, INSERT, UPDATE, DELETE ON alliance_library.* TO 'library_app'@'%';
 ```
 
-Use a new, unique password. Do not put it in source files or commit it. Add these two secrets in the provisioned Key Vault using the Azure portal:
+Use new, unique passwords. Do not put them in source files or commit them. Add these secrets in the provisioned Key Vault using the Azure portal:
 
 - `library-db-user` — `library_app`
 - `library-db-password` — the password just assigned to that account
+- `library-staff-password` — a unique initial staff password with at least 12 characters
 
 For password rotation, update both the MySQL account and Key Vault secret, then restart the Web App.
 
@@ -60,21 +61,23 @@ In App Service **Configuration → Application settings**, add:
 
 - `LIBRARY_DB_USER` = `@Microsoft.KeyVault(SecretUri=https://<key-vault-name>.vault.azure.net/secrets/library-db-user)`
 - `LIBRARY_DB_PASSWORD` = `@Microsoft.KeyVault(SecretUri=https://<key-vault-name>.vault.azure.net/secrets/library-db-password)`
+- `LIBRARY_STAFF_EMAIL` = the email for the initial library staff account
+- `LIBRARY_STAFF_PASSWORD` = `@Microsoft.KeyVault(SecretUri=https://<key-vault-name>.vault.azure.net/secrets/library-staff-password)`
 
-The `APP_ENV=production` setting and HTTPS-only website configuration are provided by the template. The root Docker image starts the dashboard as the default page. On first connection, the app initializes missing tables from `src/main/resources/db/schema.sql` using non-destructive `CREATE TABLE IF NOT EXISTS` statements and safe seeds; ensure the app user has the schema permissions above. Existing tables and records are retained.
+The `APP_ENV=production` setting and HTTPS-only website configuration are provided by the template. The root Docker image directs visitors to sign-in. On first connection, the app initializes missing tables from `src/main/resources/db/schema.sql` using non-destructive `CREATE TABLE IF NOT EXISTS` statements and safe seeds; ensure the app user has the schema permissions above. Existing tables and records are retained.
 
 Key Vault references resolve through the App Service's system-assigned identity. If the reference status is unresolved, check the Key Vault secret names, the `Key Vault Secrets User` role assignment, and the Web App's identity before retrying.
 
 ## 5. Update schema and deploy future changes
 
-For future pushes to `main`, GitHub Actions runs `mvn clean verify` before publishing a container image. Database schema changes are not silently applied by the app: review and execute the relevant SQL migration before deploying code that depends on it. Keep MySQL backups enabled and test a restore before production use.
+For future pushes to `main`, GitHub Actions runs `mvn clean verify` before publishing a container image. The application creates missing tables during startup; review any changes to existing-table structure and execute required SQL migrations before deploying dependent code. Keep MySQL backups enabled and test a restore before production use.
 
 The generated App Service outbound IP list is included in MySQL firewall rules. If App Service plan/region or outbound addresses change, update and redeploy the Bicep template so the MySQL allow-list remains accurate. The template intentionally does not open MySQL to all Azure services.
 
 ## Security boundaries and limitations
 
-- The entire website is public. Anyone can read, add, change, or delete library and student records, issue/return books, and change settings.
-- CSRF validation covers POST forms; it mitigates cross-site request forgery but does not prevent direct public access.
+- Sign-in and role checks are required. Public registration creates student accounts only; staff accounts are provisioned using secret environment variables. Student identity is not independently verified, so institutional SSO/email verification is required before using real student records.
+- CSRF validation covers POST forms. HTTPS, role checks, password hashing, and input validation are enabled.
 - The application requires `APP_ENV=production` and the MySQL environment variables, rejects missing production database configuration, and never falls back to the local H2 file.
 - User-managed browser-to-App-Service traffic is HTTPS-only. MySQL uses a per-IP firewall allow-list and TLS certificate/hostname verification.
-- This configuration is for a development/demo deployment only. Do not use production student data or institutional workloads without restoring authentication and authorization.
+- This configuration is for a development/demo deployment only. Complete an institutional security and privacy review, identity verification, and operational hardening before production student data or workloads.
