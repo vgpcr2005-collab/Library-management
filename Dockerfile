@@ -9,7 +9,7 @@ ENV APP_ENV=production
 ENV WEBSITES_PORT=8080
 RUN rm -rf /usr/local/tomcat/webapps/*
 RUN sed -i 's/port="8005"/port="-1"/' /usr/local/tomcat/conf/server.xml
-RUN sed -i 's/port="8080"/port="${tomcat.http.port:8080}"/' /usr/local/tomcat/conf/server.xml
+RUN sed -i 's/port="8080"/port="${tomcat.http.port}"/' /usr/local/tomcat/conf/server.xml
 COPY --from=build /app/target/smart-library.war /usr/local/tomcat/webapps/ROOT.war
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 EXPOSE 8080
