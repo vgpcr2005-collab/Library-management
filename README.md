@@ -101,7 +101,7 @@ The database host and credentials have not been verified by this repository buil
 
 ## Access and security
 
-- Local mode restricts requests to this computer. Sign-in is required for all application pages. Student accounts can browse books, update their own profile, view their loans, and request borrowing/renewal; staff accounts can manage students, books, circulation, requests, reports, and settings.
+- Local mode restricts requests to this computer. Sign-in is required for all application pages. Student accounts can browse books, update their own profile, view their loans, and request borrowing, renewal, and physical returns; staff accounts can manage students, books, circulation, requests, reports, and settings.
 - Public registration creates student accounts only; staff accounts must be provisioned with `LIBRARY_STAFF_EMAIL` and `LIBRARY_STAFF_PASSWORD`. Passwords are stored as PBKDF2-HMAC-SHA256 hashes, and successful sign-in rotates the session.
 - All state-changing forms use CSRF tokens. HTTPS, security headers, database constraints, role checks, and input validation are enabled. For institutional use, configure identity verification/SSO and operational controls appropriate to student records.
 - Production mode requires HTTPS and MySQL and disables the embedded-database fallback.
@@ -111,18 +111,19 @@ The database host and credentials have not been verified by this repository buil
 - Database-calculated dashboard statistics, six-month activity, categories, recently issued books, and most-borrowed leaderboard.
 - Search by title/author/ISBN/category, category and availability filters, visual stock status, and low-stock hints.
 - Student self-registration, sign-in, profile updates, and a private borrowing history.
-- Student borrowing and renewal requests with staff review and approval.
+- Student borrowing, renewal, and physical return requests with staff review; pending borrows do not become loans until approved, and return requests remain active loans until staff confirms receipt.
+- Student-visible library rules that display the configured loan period, daily overdue fine, and borrowing limit.
 - Role-based access: students browse the catalogue and see their own records; staff manage students, books, circulation, reports, and settings.
 - Student directory search and validated staff profile updates.
 - Issue transactions lock the selected inventory row, enforce reference-only rules and configured student limits, and commit availability and loan records atomically.
-- Return transactions prevent duplicate returns, restore inventory, and calculate the fine from configured daily rate and overdue days in one transaction.
+- Return transactions prevent duplicate returns, restore inventory, and calculate the fine from the configured daily rate and overdue days in one transaction, including staff-confirmed student returns.
 - Available/issued/overdue/history/popularity/monthly reports, with CSV download.
 - Configurable loan period, daily fine, and borrowing limit.
-- Responsive, navy/white/gold interface; charts use the Maven-packaged Chart.js WebJar.
+- Responsive forest-green, ivory, and brass interface; charts use the Maven-packaged Chart.js WebJar.
 
 ## Database tables
 
-`users`, `students`, `books`, `book_issues`, `book_returns`, `book_requests`, and `library_settings` are created by the application on first local use or by `schema.sql` in MySQL. Foreign keys, uniqueness rules, indexes, and check constraints protect core records. Issue and return records are attributed to the signed-in staff account. Circulation and request decisions use explicit JDBC transactions and row locks.
+`users`, `students`, `books`, `book_issues`, `book_returns`, `book_requests`, `book_return_requests`, and `library_settings` are created by the application on first local use or by `schema.sql` in MySQL. Foreign keys, uniqueness rules, indexes, and check constraints protect core records. Issue and return records are attributed to the signed-in staff account. Circulation and request decisions use explicit JDBC transactions and row locks. The local starter catalogue contains 25 books; SQL seeds add new titles by ISBN without duplicating existing records.
 
 ## Java concepts mapping
 
@@ -138,7 +139,7 @@ The in-app **Java concepts** page explains these examples. **About Project** and
 
 ## Tests and acceptance checklist
 
-Run automated tests with `mvn clean verify`. Tests cover domain validation, password hashing, embedded database initialization, student registration/sign-in, request approval, and issue/return transactions.
+Run automated tests with `mvn clean verify`. Tests cover domain validation, password hashing, embedded database initialization, student registration/sign-in, request approval, and issue/return transactions, including staff-confirmed student returns.
 
 | Scenario | Expected result |
 |---|---|

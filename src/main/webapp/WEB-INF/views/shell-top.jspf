@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#173b32">
   <title>Library portal | Alliance University</title>
-  <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/app.css?v=library-motion-20261025">
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/app.css?v=library-circulation-v2">
   <script defer src="${pageContext.request.contextPath}/webjars/chart.js/4.4.8/dist/chart.umd.js"></script>
   <script defer src="${pageContext.request.contextPath}/assets/js/app.js?v=library-motion-20261025"></script>
 </head>
@@ -21,6 +21,7 @@
     <nav class="side-nav" aria-label="Main navigation">
       <a href="${pageContext.request.contextPath}/app/dashboard"><span aria-hidden="true">D</span> Dashboard</a>
       <a href="${pageContext.request.contextPath}/app/books"><span aria-hidden="true">B</span> Book catalogue</a>
+      <a href="${pageContext.request.contextPath}/app/rules"><span aria-hidden="true">R</span> Library rules</a>
       <c:if test="${sessionScope.account.role eq 'STUDENT'}"><a href="${pageContext.request.contextPath}/app/my-library"><span aria-hidden="true">M</span> My library</a></c:if>
       <c:if test="${sessionScope.account.role ne 'STUDENT'}">
       <a href="${pageContext.request.contextPath}/app/students"><span aria-hidden="true">S</span> Students</a>

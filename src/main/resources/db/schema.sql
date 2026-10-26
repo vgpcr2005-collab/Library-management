@@ -86,6 +86,20 @@ CREATE TABLE IF NOT EXISTS book_requests (
   INDEX idx_book_requests_status (status, requested_at)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS book_return_requests (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  student_id BIGINT NOT NULL,
+  issue_id BIGINT NOT NULL,
+  status ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
+  requested_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  processed_by BIGINT NULL,
+  processed_at TIMESTAMP NULL,
+  CONSTRAINT fk_return_requests_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_return_requests_issue FOREIGN KEY (issue_id) REFERENCES book_issues(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_return_requests_user FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE RESTRICT,
+  INDEX idx_return_requests_status (status, requested_at)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS library_settings (
   setting_key VARCHAR(60) PRIMARY KEY,
   setting_value VARCHAR(120) NOT NULL
@@ -96,9 +110,29 @@ INSERT INTO library_settings (setting_key, setting_value) VALUES
 ON DUPLICATE KEY UPDATE setting_key = VALUES(setting_key);
 
 INSERT INTO books (isbn, title, author, category, total_copies, available_copies, reference_only) VALUES
+('9780132350884', 'Clean Code', 'Robert C. Martin', 'Software Engineering', 8, 8, FALSE),
+('9780262033848', 'Introduction to Algorithms', 'Thomas H. Cormen', 'Computer Science', 5, 5, FALSE),
+('9780073523323', 'Database System Concepts', 'Abraham Silberschatz', 'Databases', 6, 6, FALSE),
+('9780199535569', 'The Oxford English Dictionary', 'Oxford University Press', 'Reference', 2, 2, TRUE),
+('9780134494166', 'The Linux Programming Interface', 'Michael Kerrisk', 'Operating Systems', 4, 4, FALSE),
 ('9780134685991', 'Effective Java', 'Joshua Bloch', 'Software Engineering', 5, 5, FALSE),
 ('9781449373320', 'Designing Data-Intensive Applications', 'Martin Kleppmann', 'Databases', 4, 4, FALSE),
 ('9780596007126', 'Head First Design Patterns', 'Eric Freeman and Elisabeth Robson', 'Software Engineering', 3, 3, FALSE),
 ('9780135957059', 'The Pragmatic Programmer', 'David Thomas and Andrew Hunt', 'Software Engineering', 4, 4, FALSE),
-('9781593279288', 'Python Crash Course', 'Eric Matthes', 'Programming', 5, 5, FALSE)
+('9781593279288', 'Python Crash Course', 'Eric Matthes', 'Programming', 5, 5, FALSE),
+('9780061120084', 'To Kill a Mockingbird', 'Harper Lee', 'Literature', 4, 4, FALSE),
+('9780743273565', 'The Great Gatsby', 'F. Scott Fitzgerald', 'Literature', 4, 4, FALSE),
+('9780141439600', 'Pride and Prejudice', 'Jane Austen', 'Literature', 4, 4, FALSE),
+('9780451524935', 'Nineteen Eighty-Four', 'George Orwell', 'Literature', 4, 4, FALSE),
+('9780140449136', 'The Odyssey', 'Homer', 'Classics', 3, 3, FALSE),
+('9780140449266', 'Crime and Punishment', 'Fyodor Dostoevsky', 'Classics', 3, 3, FALSE),
+('9780062316097', 'Sapiens', 'Yuval Noah Harari', 'History', 3, 3, FALSE),
+('9780062464316', 'Homo Deus', 'Yuval Noah Harari', 'History', 2, 2, FALSE),
+('9780131103627', 'The C Programming Language', 'Brian W. Kernighan and Dennis M. Ritchie', 'Programming', 3, 3, FALSE),
+('9780136019701', 'Clean Architecture', 'Robert C. Martin', 'Software Engineering', 3, 3, FALSE),
+('9780137081073', 'The Clean Coder', 'Robert C. Martin', 'Software Engineering', 3, 3, FALSE),
+('9781491950357', 'Learning React', 'Alex Banks and Eve Porcello', 'Programming', 3, 3, FALSE),
+('9780321125217', 'Domain-Driven Design', 'Eric Evans', 'Software Engineering', 2, 2, FALSE),
+('9780201633610', 'Design Patterns', 'Erich Gamma, Richard Helm, Ralph Johnson, and John Vlissides', 'Software Engineering', 3, 3, FALSE),
+('9780134757599', 'Refactoring', 'Martin Fowler', 'Software Engineering', 3, 3, FALSE)
 ON DUPLICATE KEY UPDATE title = VALUES(title);

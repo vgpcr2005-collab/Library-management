@@ -2,11 +2,13 @@ package edu.alliance.library.dao;
 
 import edu.alliance.library.util.Database;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.temporal.ChronoUnit;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -83,18 +85,67 @@ public class LibraryRequestDao {
         }
     }
 
-    public List<Map<String, Object>> pending() throws SQLException {
-        return requests("WHERE r.status='PENDING' ORDER BY r.requested_at");
-    }
-
-    public List<Map<String, Object>> forStudent(long studentRecordId) throws SQLException {
-        return requests("WHERE r.student_id=? ORDER BY r.requested_at DESC", studentRecordId);
-    }
-
-    public void process(long requestId, long staffUserId, boolean approve) throws SQLException {
+    public void requestReturn(long studentRecordId, long issueId) throws SQLException {
         try (Connection connection = Database.getConnection()) {
             connection.setAutoCommit(false);
             try {
+                try (PreparedStatement issue = connection.prepareStatement(
+                        "SELECT id FROM book_issues WHERE id=? AND student_id=? AND returned=FALSE FOR UPDATE")) {
+                    issue.setLong(1, issueId);
+                    issue.setLong(2, studentRecordId);
+                    try (ResultSet result = issue.executeQuery()) {
+                        if (!result.next()) throw new IllegalArgumentException("This active loan was not found.");
+                    }
+                }
+                try (PreparedStatement pending = connection.prepareStatement(
+                        "SELECT id FROM book_return_requests WHERE issue_id=? AND status='PENDING'")) {
+                    pending.setLong(1, issueId);
+                    try (ResultSet result = pending.executeQuery()) {
+                        if (result.next()) throw new IllegalArgumentException("A return request for this loan is already waiting for staff.");
+                    }
+                }
+                try (PreparedStatement insert = connection.prepareStatement(
+                        "INSERT INTO book_return_requests(student_id,issue_id,status) VALUES(?,?,'PENDING')")) {
+                    insert.setLong(1, studentRecordId);
+                    insert.setLong(2, issueId);
+                    insert.executeUpdate();
+                }
+                connection.commit();
+            } catch (SQLException | RuntimeException e) {
+                connection.rollback();
+                throw e;
+            }
+        }
+    }
+
+    public List<Map<String, Object>> pending() throws SQLException {
+        List<Map<String, Object>> pending = requests("WHERE r.status='PENDING' ORDER BY r.requested_at");
+        pending.addAll(returnRequests("WHERE rr.status='PENDING' ORDER BY rr.requested_at"));
+        pending.sort((left, right) -> ((java.sql.Timestamp) left.get("requestedAt"))
+                .compareTo((java.sql.Timestamp) right.get("requestedAt")));
+        return pending;
+    }
+
+    public List<Map<String, Object>> forStudent(long studentRecordId) throws SQLException {
+        List<Map<String, Object>> history = requests("WHERE r.student_id=? ORDER BY r.requested_at DESC", studentRecordId);
+        history.addAll(returnRequests("WHERE rr.student_id=? ORDER BY rr.requested_at DESC", studentRecordId));
+        history.sort((left, right) -> ((java.sql.Timestamp) right.get("requestedAt"))
+                .compareTo((java.sql.Timestamp) left.get("requestedAt")));
+        return history;
+    }
+
+    public void process(long requestId, String processingType, long staffUserId, boolean approve) throws SQLException {
+        try (Connection connection = Database.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                if ("RETURN".equals(processingType)) {
+                    processReturn(connection, requestId, staffUserId, approve);
+                    connection.commit();
+                    return;
+                }
+                if (!"BORROW".equals(processingType) && !"RENEW".equals(processingType)) {
+                    throw new IllegalArgumentException("Unknown book request type.");
+                }
                 long studentId;
                 long bookId;
                 long issueId;
@@ -106,6 +157,9 @@ public class LibraryRequestDao {
                         if (!result.next()) throw new IllegalArgumentException("Request not found.");
                         if (!"PENDING".equals(result.getString("status"))) {
                             throw new IllegalArgumentException("This request has already been processed.");
+                        }
+                        if (!processingType.equals(result.getString("request_type"))) {
+                            throw new IllegalArgumentException("Request type does not match.");
                         }
                         studentId = result.getLong("student_id");
                         bookId = result.getLong("book_id");
@@ -130,6 +184,68 @@ public class LibraryRequestDao {
                 connection.rollback();
                 throw e;
             }
+        }
+    }
+
+    private void processReturn(Connection connection, long requestId, long staffUserId, boolean approve)
+            throws SQLException {
+        long issueId;
+        long studentId;
+        try (PreparedStatement request = connection.prepareStatement(
+                "SELECT issue_id,student_id,status FROM book_return_requests WHERE id=? FOR UPDATE")) {
+            request.setLong(1, requestId);
+            try (ResultSet result = request.executeQuery()) {
+                if (!result.next()) throw new IllegalArgumentException("Return request not found.");
+                if (!"PENDING".equals(result.getString("status"))) {
+                    throw new IllegalArgumentException("This return request has already been processed.");
+                }
+                issueId = result.getLong("issue_id");
+                studentId = result.getLong("student_id");
+            }
+        }
+        if (approve) {
+            long bookId;
+            LocalDate dueDate;
+            try (PreparedStatement issue = connection.prepareStatement(
+                    "SELECT book_id,due_date,returned FROM book_issues WHERE id=? AND student_id=? FOR UPDATE")) {
+                issue.setLong(1, issueId);
+                issue.setLong(2, studentId);
+                try (ResultSet result = issue.executeQuery()) {
+                    if (!result.next() || result.getBoolean("returned")) {
+                        throw new IllegalArgumentException("This loan has already been returned or is no longer active.");
+                    }
+                    bookId = result.getLong("book_id");
+                    dueDate = result.getDate("due_date").toLocalDate();
+                }
+            }
+            BigDecimal dailyRate = new BigDecimal(settings.get(connection, "fine_per_day", "5.00"));
+            long overdueDays = Math.max(0, ChronoUnit.DAYS.between(dueDate, LocalDate.now()));
+            BigDecimal fine = dailyRate.multiply(BigDecimal.valueOf(overdueDays));
+            try (PreparedStatement markReturned = connection.prepareStatement(
+                    "UPDATE book_issues SET returned=TRUE WHERE id=? AND returned=FALSE")) {
+                markReturned.setLong(1, issueId);
+                if (markReturned.executeUpdate() != 1) throw new IllegalArgumentException("This loan has already been returned.");
+            }
+            try (PreparedStatement updateInventory = connection.prepareStatement(
+                    "UPDATE books SET available_copies=available_copies+1 WHERE id=? AND available_copies<total_copies")) {
+                updateInventory.setLong(1, bookId);
+                if (updateInventory.executeUpdate() != 1) throw new SQLException("Inventory could not be updated.");
+            }
+            try (PreparedStatement insertReturn = connection.prepareStatement(
+                    "INSERT INTO book_returns(issue_id,returned_by,return_date,fine_amount) VALUES(?,?,?,?)")) {
+                insertReturn.setLong(1, issueId);
+                insertReturn.setLong(2, staffUserId);
+                insertReturn.setDate(3, Date.valueOf(LocalDate.now()));
+                insertReturn.setBigDecimal(4, fine);
+                insertReturn.executeUpdate();
+            }
+        }
+        try (PreparedStatement update = connection.prepareStatement(
+                "UPDATE book_return_requests SET status=?,processed_by=?,processed_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'")) {
+            update.setString(1, approve ? "APPROVED" : "REJECTED");
+            update.setLong(2, staffUserId);
+            update.setLong(3, requestId);
+            if (update.executeUpdate() != 1) throw new IllegalArgumentException("This return request has already been processed.");
         }
     }
 
@@ -236,7 +352,28 @@ public class LibraryRequestDao {
                         "requestType", result.getString("request_type"), "status", result.getString("status"),
                         "requestedAt", result.getTimestamp("requested_at"), "title", result.getString("title"),
                         "author", result.getString("author"), "studentName", result.getString("full_name"),
-                        "studentId", result.getString("campus_id")));
+                        "studentId", result.getString("campus_id"), "processingType", result.getString("request_type")));
+                return rows;
+            }
+        }
+    }
+
+    private List<Map<String, Object>> returnRequests(String condition, Object... values) throws SQLException {
+        String sql = """
+                SELECT rr.id,rr.status,rr.requested_at,b.title,b.author,s.student_id AS campus_id,u.full_name
+                FROM book_return_requests rr JOIN book_issues i ON i.id=rr.issue_id
+                JOIN books b ON b.id=i.book_id JOIN students s ON s.id=rr.student_id
+                JOIN users u ON u.id=s.user_id
+                """ + condition;
+        try (Connection connection = Database.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (int i = 0; i < values.length; i++) statement.setObject(i + 1, values[i]);
+            try (ResultSet result = statement.executeQuery()) {
+                List<Map<String, Object>> rows = new ArrayList<>();
+                while (result.next()) rows.add(Map.of("id", result.getLong("id"), "requestType", "RETURN",
+                        "status", result.getString("status"), "requestedAt", result.getTimestamp("requested_at"),
+                        "title", result.getString("title"), "author", result.getString("author"),
+                        "studentName", result.getString("full_name"), "studentId", result.getString("campus_id"),
+                        "processingType", "RETURN"));
                 return rows;
             }
         }

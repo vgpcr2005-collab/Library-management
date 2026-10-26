@@ -59,6 +59,7 @@ h3 { margin: 0 0 4px; font-size: 14px; }
 p { color: var(--muted); line-height: 1.65; }
 .welcome-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 23px; }
 .welcome-row p { margin: 0; font-size: 12px; }
+.welcome-actions { display: flex; flex-wrap: wrap; gap: 9px; }
 .eyebrow { display: block; margin-bottom: 9px; color: #8d7952; font-size: 9px; font-weight: 700; letter-spacing: .16em; }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 39px; padding: 0 16px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
 .button:hover { transform: translateY(-1px); }
@@ -76,6 +77,11 @@ p { color: var(--muted); line-height: 1.65; }
 .notice { margin: 0 0 18px; padding: 12px 15px; border: 1px solid; border-radius: 7px; font-size: 12px; line-height: 1.5; }
 .notice-success { border-color: #cde9dc; background: #f1fbf6; color: #216d50; }
 .notice-error { border-color: #f0d5d7; background: #fff6f6; color: #9f3f48; }
+.notice-info { border-color: #dce7e2; background: #f5f8f4; color: #405c4e; }
+.rules-list { display: grid; gap: 13px; margin: 0; padding: 0; list-style: none; }
+.rules-list li { padding-bottom: 13px; border-bottom: 1px solid var(--line); color: #56665d; font-size: 12px; line-height: 1.65; }
+.rules-list li:last-child { padding-bottom: 0; border-bottom: 0; }
+.rules-list strong { color: var(--navy); }
 .stat-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 13px; margin-bottom: 18px; }
 .stat-card { display: flex; align-items: flex-start; gap: 12px; min-height: 120px; padding: 18px 15px; border: 1px solid var(--line); border-radius: 9px; background: white; box-shadow: 0 5px 18px rgba(19,35,59,.025); }
 .stat-icon { display: inline-grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto; border-radius: 8px; font-size: 17px; font-weight: 700; }
@@ -576,6 +582,7 @@ pre { overflow: auto; margin: 0 0 12px; padding: 13px; border: 1px solid #e9edf2
   .footer { padding: 0 15px 18px; font-size: 9px; }
   .welcome-row { align-items: flex-start; flex-direction: column; gap: 12px; }
   .welcome-row .button { align-self: flex-start; }
+  .welcome-actions { align-items: flex-start; flex-direction: column; }
   .stat-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
   .stat-card { min-height: 98px; padding: 13px 10px; gap: 9px; }
   .stat-card strong { font-size: 21px; }

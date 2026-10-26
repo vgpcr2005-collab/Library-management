@@ -5,7 +5,7 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#173b32">
   <title>Student registration | Alliance University Library</title>
-  <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/app.css?v=library-motion-20261025">
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/app.css?v=library-circulation-v2">
   <script defer src="${pageContext.request.contextPath}/assets/js/app.js?v=library-motion-20261025"></script>
 </head>
 <body class="app-body">

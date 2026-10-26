@@ -59,6 +59,12 @@ public class MyLibraryServlet extends HttpServlet {
                 response.sendRedirect(request.getContextPath() + "/app/my-library");
                 return;
             }
+            if ("return".equals(action)) {
+                requests.requestReturn(account.studentRecordId(), Long.parseLong(request.getParameter("issueId")));
+                request.getSession().setAttribute("success", "Your return request was sent. Bring the book to the library desk; staff will record the return after receiving it.");
+                response.sendRedirect(request.getContextPath() + "/app/my-library");
+                return;
+            }
             String fullName = InputValidator.clean(request.getParameter("fullName"));
             String email = InputValidator.normalize(request.getParameter("email"));
             String department = InputValidator.clean(request.getParameter("department"));
@@ -76,8 +82,8 @@ public class MyLibraryServlet extends HttpServlet {
             request.setAttribute("error", e.getMessage());
             load(request, response);
         } catch (SQLException e) {
-            getServletContext().log("Student profile update failed " + Database.safeDiagnostic(e));
-            request.setAttribute("error", "Your profile could not be updated. Check whether the email is already registered.");
+            getServletContext().log("Student library action failed " + Database.safeDiagnostic(e));
+            request.setAttribute("error", "Your library request or profile change could not be completed.");
             load(request, response);
         }
     }

@@ -143,7 +143,9 @@ public class IssueDao {
 
     public List<Map<String, Object>> history(long studentRecordId) throws SQLException {
         String sql = """
-                SELECT i.id,b.title,b.author,i.issue_date,i.due_date,i.returned,r.return_date,r.fine_amount
+                SELECT i.id,b.title,b.author,i.issue_date,i.due_date,i.returned,r.return_date,r.fine_amount,
+                       EXISTS(SELECT 1 FROM book_return_requests rr
+                              WHERE rr.issue_id=i.id AND rr.status='PENDING') AS return_requested
                 FROM book_issues i JOIN books b ON b.id=i.book_id
                 LEFT JOIN book_returns r ON r.issue_id=i.id
                 WHERE i.student_id=? ORDER BY i.issue_date DESC LIMIT 200
@@ -152,11 +154,17 @@ public class IssueDao {
             p.setLong(1, studentRecordId);
             try (ResultSet r = p.executeQuery()) {
                 List<Map<String, Object>> rows = new ArrayList<>();
-                while (r.next()) rows.add(Map.of("id", r.getLong("id"), "title", r.getString("title"),
-                        "author", r.getString("author"), "issueDate", r.getDate("issue_date"),
-                        "dueDate", r.getDate("due_date"), "returned", r.getBoolean("returned"),
-                        "returnDate", r.getDate("return_date") == null ? "" : r.getDate("return_date").toString(),
-                        "fine", r.getBigDecimal("fine_amount") == null ? BigDecimal.ZERO : r.getBigDecimal("fine_amount")));
+                while (r.next()) {
+                    boolean returned = r.getBoolean("returned");
+                    LocalDate dueDate = r.getDate("due_date").toLocalDate();
+                    rows.add(Map.of("id", r.getLong("id"), "title", r.getString("title"),
+                            "author", r.getString("author"), "issueDate", r.getDate("issue_date"),
+                            "dueDate", r.getDate("due_date"), "returned", returned,
+                            "overdue", !returned && dueDate.isBefore(LocalDate.now()),
+                            "returnDate", r.getDate("return_date") == null ? "" : r.getDate("return_date").toString(),
+                            "fine", r.getBigDecimal("fine_amount") == null ? BigDecimal.ZERO : r.getBigDecimal("fine_amount"),
+                            "returnRequested", r.getBoolean("return_requested")));
+                }
                 return rows;
             }
         }

@@ -37,19 +37,24 @@ public class RequestsServlet extends HttpServlet {
         try {
             long requestId = Long.parseLong(request.getParameter("requestId"));
             String decision = request.getParameter("decision");
+            String type = request.getParameter("type");
             if (!"approve".equals(decision) && !"reject".equals(decision)) {
                 throw new IllegalArgumentException("Choose whether to approve or reject the request.");
             }
+            if (!"BORROW".equals(type) && !"RENEW".equals(type) && !"RETURN".equals(type)) {
+                throw new IllegalArgumentException("Unknown book request type.");
+            }
             Account account = (Account) request.getSession().getAttribute("account");
-            requests.process(requestId, account.id(), "approve".equals(decision));
-            request.getSession().setAttribute("success", "The request was " + ("approve".equals(decision) ? "approved." : "rejected."));
+            requests.process(requestId, type, account.id(), "approve".equals(decision));
+            request.getSession().setAttribute("success", "The " + type.toLowerCase(java.util.Locale.ROOT)
+                    + " request was " + ("approve".equals(decision) ? "approved." : "rejected."));
             response.sendRedirect(request.getContextPath() + "/app/requests");
         } catch (IllegalArgumentException e) {
             request.setAttribute("error", e.getMessage());
             load(request, response);
         } catch (SQLException e) {
             getServletContext().log("Book request could not be processed " + Database.safeDiagnostic(e));
-            request.setAttribute("error", "The request could not be processed. Check book availability and student borrowing limits.");
+            request.setAttribute("error", "The request could not be processed. Refresh the queue and check its current status.");
             load(request, response);
         }
     }

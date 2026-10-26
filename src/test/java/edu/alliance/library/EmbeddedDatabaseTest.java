@@ -8,6 +8,7 @@ import edu.alliance.library.dao.LibraryOperatorDao;
 import edu.alliance.library.dao.LibraryRequestDao;
 import edu.alliance.library.dao.ReportDao;
 import edu.alliance.library.dao.StudentDao;
+import edu.alliance.library.dao.SettingsDao;
 import edu.alliance.library.util.Database;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -55,7 +56,7 @@ class EmbeddedDatabaseTest {
         BookDao books = new BookDao();
         StudentDao students = new StudentDao();
         IssueDao issues = new IssueDao();
-        assertEquals(10, books.search("", "", "").size());
+        assertEquals(25, books.search("", "", "").size());
         assertEquals(2, students.search("").size());
 
         long bookId = findId("SELECT id FROM books WHERE isbn=?", "9780132350884");
@@ -91,12 +92,28 @@ class EmbeddedDatabaseTest {
         requests.requestBook(registered.studentRecordId(), bookId);
         assertThrows(IllegalArgumentException.class, () -> requests.requestBook(registered.studentRecordId(), bookId));
         assertEquals(1, requests.pending().size());
-        requests.process(((Number) requests.pending().get(0).get("id")).longValue(), operatorId, true);
+        requests.process(((Number) requests.pending().get(0).get("id")).longValue(), "BORROW", operatorId, true);
         var newLoan = new IssueDao().history(registered.studentRecordId()).get(0);
         long newIssueId = ((Number) newLoan.get("id")).longValue();
         requests.requestRenewal(registered.studentRecordId(), newIssueId);
-        requests.process(((Number) requests.pending().get(0).get("id")).longValue(), operatorId, true);
+        requests.process(((Number) requests.pending().get(0).get("id")).longValue(), "RENEW", operatorId, true);
         assertThrows(IllegalArgumentException.class, () -> requests.requestRenewal(registered.studentRecordId(), newIssueId));
+        int availableBeforeReturn = books.find(bookId).getAvailableCopies();
+        requests.requestReturn(registered.studentRecordId(), newIssueId);
+        assertThrows(IllegalArgumentException.class,
+                () -> requests.requestReturn(registered.studentRecordId(), newIssueId));
+        assertEquals(1, requests.pending().size());
+        assertEquals("RETURN", requests.pending().get(0).get("processingType"));
+        assertEquals(false, new IssueDao().history(registered.studentRecordId()).get(0).get("returned"));
+        assertEquals(availableBeforeReturn, books.find(bookId).getAvailableCopies());
+        long returnRequestId = ((Number) requests.pending().get(0).get("id")).longValue();
+        requests.process(returnRequestId, "RETURN", operatorId, true);
+        assertEquals(true, new IssueDao().history(registered.studentRecordId()).get(0).get("returned"));
+        assertEquals(availableBeforeReturn + 1, books.find(bookId).getAvailableCopies());
+        assertEquals(0, ((BigDecimal) new IssueDao().history(registered.studentRecordId()).get(0).get("fine")).compareTo(BigDecimal.ZERO));
+        assertEquals("APPROVED", requests.forStudent(registered.studentRecordId()).stream()
+                .filter(item -> "RETURN".equals(item.get("requestType"))).findFirst().orElseThrow().get("status"));
+        assertEquals("14", new SettingsDao().all().get("loan_days"));
     }
 
     private long findId(String sql, Object value) throws SQLException {
